@@ -1,0 +1,50 @@
+<html lang="ru">
+  <head>
+	<meta charset="utf-8" />
+    <title>HttpListener Example</title>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
+  </head>
+  <body>
+    <form method="post" action="api/setParams" id="paramsForm">
+		<input type="submit" value="Применить">
+		<strong>Формат:</strong>
+		<input type="radio" name="format" value="png" id="radioFormatPng">PNG
+		<input type="radio" name="format" value="jpg" id="radioFormatJpg">JPG
+		<strong>Качество:</strong>
+		<input type="range" name="quality" min="0" max="100" step="1" value="50" id="rangeQuality">
+    </form>
+	<img src="/img" id="img"/>
+	<script language="JavaScript">
+	document.getElementById("paramsForm").style.visibility = "hidden";
+	
+	fetch('http://'+document.location.host+'/api/params')
+	.then((response) => {
+		return response.json();
+	})
+	.then((data) => {
+		console.log(data);
+		if (data.format == 'png'){
+			document.getElementById("radioFormatPng").checked = true;
+		}else if (data.format == 'jpg'){
+			document.getElementById("radioFormatJpg").checked = true;
+		}
+		document.getElementById("rangeQuality").value = data.quality;
+		document.getElementById("paramsForm").style.visibility = "visible";
+	});
+	
+	function refreshImg()
+	{
+		let _img = document.getElementById('img');
+		let newImg = new Image;
+		newImg.onload = function() {
+			_img.src = this.src;
+			refreshImg();
+		}
+		newImg.src = "/img?t=" + new Date().getTime();
+	}
+	
+	refreshImg();
+	
+	</script>
+  </body>
+</html>
