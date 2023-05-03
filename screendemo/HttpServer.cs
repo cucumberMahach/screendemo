@@ -1,34 +1,29 @@
-﻿using System.Net;
+﻿using screendemo.api;
+using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace screendemo
 {
-    class Params
-    {
-        [JsonPropertyName("format")] public string format { get; set; }
-        [JsonPropertyName ("quality")] public int quality { get; set; }
-    }
     class HttpServer
     {
         private HttpListener listener;
         private int requestCount = 0;
         private byte[] image;
-        private object locker = new object();
-        private Params param;
+        private ImageParameters param;
 
-        public EventHandler<Params> ParamsChanged;
+        public EventHandler<ImageParameters> ImageParametersChanged;
 
         public HttpServer()
         {
             image = File.ReadAllBytes("plug.jpg");
-            param = new Params();
+            param = new ImageParameters();
             param.format = "png";
             param.quality = 100;
         }
 
-        public Params GetParams()
+        public ImageParameters GetImageParameters()
         {
             return param;
         }
@@ -41,8 +36,6 @@ namespace screendemo
             Console.WriteLine("Listening for connections on {0}", url);
 
             Task listenTask = HandleIncomingConnections();
-            //listenTask.GetAwaiter().GetResult();
-
             //listener.Close();
         }
 
@@ -53,35 +46,25 @@ namespace screendemo
 
         public void PutImage(byte[] data)
         {
-            lock (locker)
-            {
-                image = data;
-            }
+            image = data;
         }
 
         public byte[] GetImage()
         {
-            lock(locker)
-            {
-                return image.ToArray();
-            }
+            return image;
         }
 
         public async Task HandleIncomingConnections()
         {
             bool runServer = true;
 
-            // While a user hasn't visited the `shutdown` url, keep on handling requests
             while (runServer)
             {
-                // Will wait here until we hear from a connection
                 HttpListenerContext ctx = await listener.GetContextAsync();
 
-                // Peel out the requests and response objects
                 HttpListenerRequest req = ctx.Request;
                 HttpListenerResponse resp = ctx.Response;
 
-                // Print out some info about the request
                 Console.WriteLine("Request #: {0}", ++requestCount);
                 Console.WriteLine(req.Url.ToString());
                 Console.WriteLine(req.HttpMethod);
@@ -89,8 +72,7 @@ namespace screendemo
                 Console.WriteLine(req.UserAgent);
                 Console.WriteLine();
 
-                // If `shutdown` url requested w/ POST, then shutdown the server after serving the page
-                if (req.HttpMethod == "POST" && req.Url.AbsolutePath == "/api/setParams")
+                if (req.HttpMethod == "POST" && req.Url.AbsolutePath == "/api/setImageParameters")
                 {
                     var stream = req.InputStream;
                     string[] str;
@@ -99,7 +81,7 @@ namespace screendemo
                         str = reader.ReadToEnd().Split('&');
                     }
 
-                    Params p = new Params();
+                    ImageParameters p = new ImageParameters();
 
                     foreach (string pair in str)
                     {
@@ -119,26 +101,24 @@ namespace screendemo
 
                     param = p;
 
-                    ParamsChanged?.Invoke(this, p);
+                    ImageParametersChanged?.Invoke(this, p);
 
                     resp.Redirect("/");
                     resp.Close();
                 }
                 else if (req.HttpMethod == "GET" && req.Url.AbsolutePath == "/img")
                 {
-                    // Write the response info
                     byte[] data = GetImage();
                     resp.ContentType = "image/png";
                     resp.ContentEncoding = null;
                     resp.ContentLength64 = data.LongLength;
 
-                    // Write out to the response stream (asynchronously), then close it
                     await resp.OutputStream.WriteAsync(data, 0, data.Length);
                     resp.Close();
                 }
-                else if (req.HttpMethod == "GET" && req.Url.AbsolutePath == "/api/params")
+                else if (req.HttpMethod == "GET" && req.Url.AbsolutePath == "/api/imageParameters")
                 {
-                    string json = JsonSerializer.Serialize<Params>(GetParams());
+                    string json = JsonSerializer.Serialize<ImageParameters>(GetImageParameters());
                     byte[] data = Encoding.UTF8.GetBytes(json);
                     resp.ContentType = "application/json";
                     resp.ContentEncoding = Encoding.UTF8;
@@ -148,14 +128,12 @@ namespace screendemo
                 }
                 else
                 {
-                    // Write the response info
                     string pageData = File.ReadAllText("server.html");
                     byte[] data = Encoding.UTF8.GetBytes(pageData);
                     resp.ContentType = "text/html";
                     resp.ContentEncoding = Encoding.UTF8;
                     resp.ContentLength64 = data.LongLength;
 
-                    // Write out to the response stream (asynchronously), then close it
                     await resp.OutputStream.WriteAsync(data, 0, data.Length);
                     resp.Close();
                 }

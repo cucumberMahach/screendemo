@@ -5,7 +5,7 @@
 	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
   </head>
   <body>
-    <form method="post" action="api/setParams" id="paramsForm">
+    <form method="post" action="api/setImageParameters" id="paramsForm">
 		<input type="submit" value="Применить">
 		<strong>Формат:</strong>
 		<input type="radio" name="format" value="png" id="radioFormatPng">PNG
@@ -17,7 +17,7 @@
 	<script language="JavaScript">
 	document.getElementById("paramsForm").style.visibility = "hidden";
 	
-	fetch('http://'+document.location.host+'/api/params')
+	fetch('http://'+document.location.host+'/api/imageParameters')
 	.then((response) => {
 		return response.json();
 	})

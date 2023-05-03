@@ -5,16 +5,10 @@ using System.Net;
 using WebSocketSharp.Server;
 using WebSocketSharp;
 using System.Diagnostics;
+using screendemo.api;
 
 namespace screendemo
 {
-    public class Laputa : WebSocketBehavior
-    {
-        protected override void OnMessage(MessageEventArgs e)
-        {
-
-        }
-    }
     class Program
     {
         static void Main(string[] args)
@@ -30,7 +24,7 @@ namespace screendemo
                 Console.WriteLine("tx");
 
                 var wssv = new WebSocketServer("ws://127.0.0.1:8001/");
-                wssv.AddWebSocketService<Laputa>("/stream");
+                wssv.AddWebSocketService<EmptyWebSocketServer>("/stream");
                 wssv.Start();
 
                 ImageCodecInfo codecInfo = GetEncoder(ImageFormat.Jpeg);
@@ -93,9 +87,9 @@ namespace screendemo
                 };
                 screenStateLogger.Start();
 
-                server.ParamsChanged += (sender, param) =>
+                server.ImageParametersChanged += (sender, param) =>
                 {
-                    Params p = (Params)param;
+                    ImageParameters p = (ImageParameters)param;
                     if (p.format == "png")
                     {
                         ImageCodecInfo codecInfo = GetEncoder(ImageFormat.Png);
