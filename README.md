@@ -36,3 +36,9 @@ host_header_rewrite = localhost:8000
 custom_domains = your_frp_server_address
 locations = /
 ```
+## Build and run
+The program is built in Visual Studio 2022.
+
+In the folder with exe files, you need to put the `resources` folder from `bin\Debug\net6.0`
+## Download prebuild binaries
+You can download the compiled program in the releases section
