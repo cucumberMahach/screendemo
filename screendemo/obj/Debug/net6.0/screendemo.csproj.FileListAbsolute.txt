@@ -22,4 +22,3 @@ C:\Users\aleks\Desktop\screendemo\screendemo\obj\Debug\net6.0\refint\screendemo.
 C:\Users\aleks\Desktop\screendemo\screendemo\obj\Debug\net6.0\screendemo.pdb
 C:\Users\aleks\Desktop\screendemo\screendemo\obj\Debug\net6.0\screendemo.genruntimeconfig.cache
 C:\Users\aleks\Desktop\screendemo\screendemo\obj\Debug\net6.0\ref\screendemo.dll
-C:\Users\aleks\Desktop\screendemo\screendemo\bin\Debug\net6.0\websocket-sharp.dll

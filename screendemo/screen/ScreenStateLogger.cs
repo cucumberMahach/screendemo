@@ -4,8 +4,9 @@ using SharpDX.DXGI;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.Runtime.InteropServices;
 
-namespace screendemo
+namespace screendemo.screen
 {
     public class ScreenStateLogger
     {
@@ -14,12 +15,17 @@ namespace screendemo
         private ImageCodecInfo _codecInfo;
         private EncoderParameters _encoderParameters;
         private object _codec_lock = new object();
+        private Image _cursorImg;
+        private ScreenDemoAdapter _screen;
 
         public int Size { get; private set; }
-        public ScreenStateLogger(ImageCodecInfo codec, EncoderParameters parameters)
+        public ScreenStateLogger(ScreenDemoAdapter screen, ImageCodecInfo codec, EncoderParameters parameters)
         {
+            _screen = screen;
             _codecInfo = codec;
             _encoderParameters = parameters;
+
+            _cursorImg = Image.FromFile("resources/cursor.png");
         }
 
         public void SetImageCodec(ImageCodecInfo codec, EncoderParameters parameters)
@@ -31,21 +37,39 @@ namespace screendemo
             }
         }
 
+        public static List<ScreenDemoAdapter> GetAvaliableAdapters()
+        {
+            List<ScreenDemoAdapter> screenDemoAdapters = new List<ScreenDemoAdapter>();
+
+            var factory = new Factory2();
+
+            foreach (var adapter in factory.Adapters1)
+            {
+                var adapterDesc = adapter.Description;
+                foreach (var output in adapter.Outputs)
+                {
+                    ScreenDemoAdapter screenDemoAdapter = new ScreenDemoAdapter();
+                    screenDemoAdapter.Adapter = adapter;
+                    screenDemoAdapter.Output = output;
+                    screenDemoAdapters.Add(screenDemoAdapter);
+                }
+            }
+            return screenDemoAdapters;
+        }
+
         public void Start()
         {
             _run = true;
-            var factory = new Factory1();
-            //Get first adapter
-            var adapter = factory.GetAdapter1(0);
+            var adapter = _screen.Adapter;
             //Get device from adapter
             var device = new SharpDX.Direct3D11.Device(adapter);
             //Get front buffer of the adapter
-            var output = adapter.GetOutput(0);
+            var output = _screen.Output;
             var output1 = output.QueryInterface<Output1>();
 
             // Width/Height of desktop to capture
-            int width = output.Description.DesktopBounds.Right;
-            int height = output.Description.DesktopBounds.Bottom;
+            int width = output.Description.DesktopBounds.Right - output.Description.DesktopBounds.Left;
+            int height = output.Description.DesktopBounds.Bottom - output.Description.DesktopBounds.Top;
 
             // Create Staging texture CPU-accessible
             var textureDesc = new Texture2DDescription
@@ -111,6 +135,17 @@ namespace screendemo
                                 bitmap.UnlockBits(mapDest);
                                 device.ImmediateContext.UnmapSubresource(screenTexture, 0);
 
+                                POINT lpPoint;
+                                bool success = GetCursorPos(out lpPoint);
+                                lpPoint.X -= output.Description.DesktopBounds.Left;
+                                lpPoint.Y -= output.Description.DesktopBounds.Top;
+                                if (success)
+                                {
+                                    Graphics g = Graphics.FromImage(bitmap);
+                                    g.DrawImage(_cursorImg, new Point(lpPoint.X - 7, lpPoint.Y - 3));
+                                    g.Flush();
+                                }
+
                                 using (var ms = new MemoryStream())
                                 {
                                     lock (_codec_lock)
@@ -144,5 +179,38 @@ namespace screendemo
         }
 
         public EventHandler<byte[]> ScreenRefreshed;
+
+        /// <summary>
+        /// Retrieves the cursor's position, in screen coordinates.
+        /// </summary>
+        /// <see>See MSDN documentation for further information.</see>
+        [DllImport("user32.dll")]
+        public static extern bool GetCursorPos(out POINT lpPoint);
+    }
+
+    /// <summary>
+    /// Struct representing a point.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    public struct POINT
+    {
+        public int X;
+        public int Y;
+
+        public static implicit operator Point(POINT point)
+        {
+            return new Point(point.X, point.Y);
+        }
+    }
+
+    public class ScreenDemoAdapter
+    {
+        public Adapter1 Adapter;
+        public Output Output;
+
+        public string ToUserString()
+        {
+            return string.Format("{0} {1} {2}x{3}", Adapter.Description1.Description, Output.Description.DeviceName, Output.Description.DesktopBounds.Right - Output.Description.DesktopBounds.Left, Output.Description.DesktopBounds.Bottom - Output.Description.DesktopBounds.Top);
+        }
     }
 }

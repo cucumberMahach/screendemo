@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "3xoB8TXciSi+/O+LBcPOkWu8asEUQbLC34jj00dDSqqvcVvtmbHWpiadctD4gNw3vsZaOPL3bitS3YRXXKmxSw==",
+  "dgSpecHash": "R3kYy1lxJS/b9h36W7tpmqBLAs3GqFc0R15Vp7W6cecGOHoNx6JYF8U/Ullk7S2GxEymtGpWpiOIth/J1RrM1w==",
   "success": true,
   "projectFilePath": "C:\\Users\\aleks\\Desktop\\screendemo\\screendemo\\screendemo.csproj",
   "expectedPackageFiles": [
@@ -81,19 +81,7 @@
     "C:\\Users\\aleks\\.nuget\\packages\\system.threading.tasks.extensions\\4.3.0\\system.threading.tasks.extensions.4.3.0.nupkg.sha512",
     "C:\\Users\\aleks\\.nuget\\packages\\system.threading.timer\\4.3.0\\system.threading.timer.4.3.0.nupkg.sha512",
     "C:\\Users\\aleks\\.nuget\\packages\\system.xml.readerwriter\\4.3.0\\system.xml.readerwriter.4.3.0.nupkg.sha512",
-    "C:\\Users\\aleks\\.nuget\\packages\\system.xml.xdocument\\4.3.0\\system.xml.xdocument.4.3.0.nupkg.sha512",
-    "C:\\Users\\aleks\\.nuget\\packages\\websocketsharp\\1.0.3-rc11\\websocketsharp.1.0.3-rc11.nupkg.sha512"
+    "C:\\Users\\aleks\\.nuget\\packages\\system.xml.xdocument\\4.3.0\\system.xml.xdocument.4.3.0.nupkg.sha512"
   ],
-  "logs": [
-    {
-      "code": "NU1701",
-      "level": "Warning",
-      "warningLevel": 1,
-      "message": "Пакет \"WebSocketSharp 1.0.3-rc11\" был восстановлен с помощью \".NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1\", а не целевой платформы проекта \"net6.0\". Этот пакет может быть не полностью совместим с вашим проектом.",
-      "libraryId": "WebSocketSharp",
-      "targetGraphs": [
-        "net6.0"
-      ]
-    }
-  ]
+  "logs": []
 }

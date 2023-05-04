@@ -1,11 +1,8 @@
-﻿using screendemo;
-using System;
-using System.Drawing.Imaging;
-using System.Net;
-using WebSocketSharp.Server;
-using WebSocketSharp;
-using System.Diagnostics;
-using screendemo.api;
+﻿using screendemo.api;
+using screendemo.http;
+using screendemo.http.handlers;
+using screendemo.screen;
+using System.Text.Json;
 
 namespace screendemo
 {
@@ -13,117 +10,86 @@ namespace screendemo
     {
         static void Main(string[] args)
         {
-            if (args.Length == 0)
+            List<string> argsList = new List<string>(args);
+
+            if (argsList.Contains("--help"))
             {
-                Console.WriteLine("Use tx, txlocal or rx in args");
+                Console.WriteLine("Screen sharing over http");
+                Console.WriteLine();
+                Console.WriteLine("Arguments:");
+                Console.WriteLine("\t--help - show help");
+                Console.WriteLine("\t--url \"http://localhost:8000/\" - use that url");
+                Console.WriteLine("\t--verbose - show verbose messages");
                 return;
             }
 
-            if (args[0] == "tx")
+            int urlArgIndex = argsList.IndexOf("--url");
+            string url = "http://localhost:8000/";
+
+            if (urlArgIndex != -1)
             {
-                Console.WriteLine("tx");
-
-                var wssv = new WebSocketServer("ws://127.0.0.1:8001/");
-                wssv.AddWebSocketService<EmptyWebSocketServer>("/stream");
-                wssv.Start();
-
-                ImageCodecInfo codecInfo = GetEncoder(ImageFormat.Jpeg);
-                EncoderParameters codecParameters = new EncoderParameters(1);
-                EncoderParameter codecParameter = new EncoderParameter(Encoder.Quality, 10L);
-                codecParameters.Param[0] = codecParameter;
-
-                var screenStateLogger = new ScreenStateLogger(codecInfo, codecParameters);
-                screenStateLogger.ScreenRefreshed += (sender, data) =>
+                if (urlArgIndex >= argsList.Count)
                 {
-                    wssv.WebSocketServices.Broadcast(data);
-                };
-                screenStateLogger.Start();
-            }
-            else if (args[0] == "rx")
-            {
-                Console.WriteLine("rx");
-                Console.WriteLine("Enter link:");
-                string link = Console.ReadLine();
-                if (link == null)
+                    Console.WriteLine("Url is not specified");
                     return;
-
-                HttpServer server = new HttpServer();
-                server.Start("http://localhost:8000/");
-
-                var ws = new WebSocket(string.Format("ws://{0}/stream", link));
-
-                ws.OnMessage += (sender, message) =>
-                {
-                    server.PutImage(message.RawData);
-                };
-
-                ws.Connect();
-
-
-                System.Diagnostics.Process.Start(new ProcessStartInfo
-                {
-                    FileName = "http://localhost:8000/",
-                    UseShellExecute = true
-                });
+                }
+                url = argsList[urlArgIndex+1];
             }
-            else if (args[0] == "txlocal")
+
+            var adapters = ScreenStateLogger.GetAvaliableAdapters();
+            Console.WriteLine("Select screen:");
+            for (int i = 0; i < adapters.Count; i++)
             {
-                Console.WriteLine("txlocal");
-
-                HttpServer server = new HttpServer();
-                server.Start("http://localhost:8000/");
-                
-                //ImageCodecInfo codecInfo = GetEncoder(ImageFormat.Jpeg);
-                ImageCodecInfo codecInfo = GetEncoder(ImageFormat.Png);
-                EncoderParameters codecParameters = new EncoderParameters(1);
-                //EncoderParameter codecParameter = new EncoderParameter(Encoder.Quality, 50L);
-                EncoderParameter codecParameter = new EncoderParameter(Encoder.Compression, (long)EncoderValue.CompressionLZW);
-                codecParameters.Param[0] = codecParameter;
-
-                var screenStateLogger = new ScreenStateLogger(codecInfo, codecParameters);
-                screenStateLogger.ScreenRefreshed += (sender, data) =>
-                {
-                    server.PutImage(data);
-                };
-                screenStateLogger.Start();
-
-                server.ImageParametersChanged += (sender, param) =>
-                {
-                    ImageParameters p = (ImageParameters)param;
-                    if (p.format == "png")
-                    {
-                        ImageCodecInfo codecInfo = GetEncoder(ImageFormat.Png);
-                        EncoderParameters codecParameters = new EncoderParameters(1);
-                        EncoderParameter codecParameter = new EncoderParameter(Encoder.Compression, (long)EncoderValue.CompressionLZW);
-                        codecParameters.Param[0] = codecParameter;
-                        screenStateLogger.SetImageCodec(codecInfo, codecParameters);
-                    }
-                    else if (p.format == "jpg")
-                    {
-                        ImageCodecInfo codecInfo = GetEncoder(ImageFormat.Jpeg);
-                        EncoderParameters codecParameters = new EncoderParameters(1);
-                        EncoderParameter codecParameter = new EncoderParameter(Encoder.Quality, (long)p.quality);
-                        codecParameters.Param[0] = codecParameter;
-                        screenStateLogger.SetImageCodec(codecInfo, codecParameters);
-                    }
-                };
-
+                Console.WriteLine(string.Format("{0}. {1}", i + 1, adapters[i].ToUserString()));
             }
+            int num = Convert.ToInt32(Console.ReadLine());
+            if (num-1 < 0 || num-1 >= adapters.Count)
+            {
+                Console.WriteLine("Incorrect screen number");
+                return;
+            }
+            Console.WriteLine();
+            
+            ScreenDemoAdapter adapter = adapters[num - 1];
+
+            ImageParameters imageParameters = new ImageParameters();
+
+            HttpServer server = new HttpServer();
+            server.SetVerbose(argsList.Contains("--verbose"));
+            var screenStateLogger = new ScreenStateLogger(adapter, imageParameters.GetImageCodecInfo(), imageParameters.GetImageEncoderParameters());
+
+            GetHtmlHandler getHtmlHandler = new GetHtmlHandler("/", "resources/server.html");
+            ImageGetHandler imageGetHandler = new ImageGetHandler();
+            GetJsonHandler getImageParametersHandler = new GetJsonHandler("/api/imageParameters");
+            SetImageParametersHandler setImageParametersHandler = new SetImageParametersHandler();
+
+            getImageParametersHandler.PutJson(JsonSerializer.Serialize(imageParameters));
+
+            setImageParametersHandler.ImageParametersChanged += (sender, param) =>
+            {
+                imageParameters = param;
+                getImageParametersHandler.PutJson(JsonSerializer.Serialize(imageParameters));
+
+                screenStateLogger.SetImageCodec(imageParameters.GetImageCodecInfo(), imageParameters.GetImageEncoderParameters());
+            };
+            
+            screenStateLogger.ScreenRefreshed += (sender, data) =>
+            {
+                imageGetHandler.PutImage(data, imageParameters.GetImageContentType());
+            };
+
+            server.Dispatcher.AddHandler(getHtmlHandler);
+            server.Dispatcher.AddHandler(imageGetHandler);
+            server.Dispatcher.AddHandler(getImageParametersHandler);
+            server.Dispatcher.AddHandler(setImageParametersHandler);
+
+            server.Start(url);
+            screenStateLogger.Start();
+
             Console.ReadKey(true);
         }
 
-        static ImageCodecInfo GetEncoder(ImageFormat format)
-        {
-            ImageCodecInfo[] codecs = ImageCodecInfo.GetImageDecoders();
-            foreach (ImageCodecInfo codec in codecs)
-            {
-                if (codec.FormatID == format.Guid)
-                {
-                    return codec;
-                }
-            }
-            return null;
-        }
+        
     }
 }
 

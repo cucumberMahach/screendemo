@@ -1,16 +1,8 @@
 {
   "profiles": {
-    "screendemo_tx": {
+    "screendemo": {
       "commandName": "Project",
-      "commandLineArgs": "tx"
-    },
-    "screendemo_rx": {
-      "commandName": "Project",
-      "commandLineArgs": "rx"
-    },
-    "screendemo_txlocal": {
-      "commandName": "Project",
-      "commandLineArgs": "txlocal"
+      "commandLineArgs": "\r\n"
     }
   }
 }
